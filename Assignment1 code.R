@@ -1,6 +1,6 @@
 
 ################################ ECON 613 HW 1 ################################ 
-#Author Promvarat Pradit
+#Author: Promvarat Pradit
 #Net ID: PP164
 
 #Set working directory
