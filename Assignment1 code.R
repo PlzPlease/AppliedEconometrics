@@ -1,5 +1,8 @@
 
 ################################ ECON 613 HW 1 ################################ 
+#Author Promvarat Pradit
+#Net ID: PP164
+
 #Set working directory
 setwd("C:/Users/promv/Dropbox/Master Course work/Spring 2019/Econ 613 Applied econometric micro/Assignment 1")
 #Clear workspcae
