@@ -129,12 +129,16 @@ less6 <- datstu[is.na(datstu$schoolcode1) | is.na(datstu$choicepgm1)
                 ,]
 numLess6 <- describeData(less6[,"stuIndex"])
 result <- rbind(result, numLess6[[1]])
+row.names(result) <- c("Number of students", "Number of schools", "Number of programs",
+                     "Number of choices", "Number of students missing test score",
+                     "Number of students apply to the same school",
+                     "Number of students apply to less that 6 choices")
 View(result)
 
 
 # Exercise 2 Data --------------------------------------------------------------
 #Create a school level dataset, where each row corresponds to a (school,program)
-#idea: keep school and choice according to rank place then merge with datsss then collapse into school dataset
+#idea: keep school and choice according to rank place then merge with datsss then aggregate into school dataset
 
 #clear unused objects
 keep(datstu, datsss, datjss, result, datsssCleaned, sure = TRUE)
