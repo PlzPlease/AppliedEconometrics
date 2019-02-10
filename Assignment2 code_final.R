@@ -403,7 +403,7 @@ SD_report <- SD_report[2:nrow(SD_report),]
 colnames(SD_report) <- c("Probit SD Delta", "Probit SD Bootstrap", "Logit SD Delta", "Logit SD Bootstrap")
 
 #keep only using data, function and results
-keep(OLS_data, Probit_data, Y_X1_Corr, OLS_coeff_table, OLS_SE_table, Probit_coeff_steep, probitLik, Probit_optim_coeff, negprobitLik, Logit_optim_coeff, neglogitLik, Probit_R_package, Logit_R_package, LP_R_package, Probit_coeff_compare, Logit_coeff_compare, ME_report, SD_report, Probit_SE_boot,Logit_SE_boot, Probit_SE_delta, Probit_SD, Logit_SD, Logit_SE_delta, sure = TRUE)
+keep(OLS_data, Probit_data, Y_X1_Corr, OLS_coeff_table, OLS_SE_table, Probit_coeff_steep, probitLik, Probit_optim_coeff, negprobitLik, Logit_optim_coeff, neglogitLik, Probit_R_package, Logit_R_package, LP_R_package, Probit_coeff_compare, Logit_coeff_compare, ME_report, SD_report, Probit_SE_boot,Logit_SE_boot, Probit_SE_delta, Probit_var, Logit_var, Logit_SE_delta, sure = TRUE)
 
 
 
