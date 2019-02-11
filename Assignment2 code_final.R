@@ -279,6 +279,30 @@ Logit_optim <- nlm(neglogitLik,b)
 Logit_optim_coeff <- Logit_optim$estimate
 
 
+#Linear probability model
+## a function that return loss (sum square error) for OLS
+LPLik <- function(b, dataframe=Probit_data) {
+  #initilize sum square error = 0
+  sum_sq_error <- 0
+  #for loop to get the summation of each observation 
+  for (i in 1:nrow(dataframe)) {
+    #create x_i vector
+    x_i <- dataframe[i,2:ncol(dataframe)]
+    x_i <- as.matrix(cbind(1,x_i))
+    #calculate OLS loss = error^2 = (predicted_y - actual y)^2
+    error2 <- ((x_i %*% b) - dataframe[i,1])^2
+    #accumulate error^2
+    sum_sq_error <- sum_sq_error + error2
+  }
+  #return - sum_sq_error to be minimized
+  return(sum_sq_error)
+}
+# Optimize min(-likelihood) = max likelihood
+LP_optim <- nlm(LPLik,b)
+# get coefficient
+LP_optim_coeff <- LP_optim$estimate
+
+
 # Compare the optimization result with R glm package result
 #Probit
 Probit_R_package <- glm(ydum ~ .,data = Probit_data, family = binomial(link="probit"))
@@ -292,17 +316,20 @@ Logit_R_package <- glm(ydum ~ .,data = Probit_data, family = binomial(link="logi
 Logit_coeff_compare <- rbind(Logit_optim_coeff,Logit_R_package$coefficients)
 row.names(Logit_coeff_compare) <- c("Logit from optimization", "Logit from glm package")
 
-#Since coefficient from my own optimization and R glm package are very similar,
-#I will use the result from R glm and lm package from this point on because they come with a nice reporting package
-
 #Linear probability
 LP_R_package <- lm(ydum ~ ., Probit_data)
+#compare
+LP_coeff_compare <- rbind(LP_optim_coeff,LP_R_package$coefficients)
+row.names(LP_coeff_compare) <- c("Linear probability from optimization", "Linear probability from glm package")
+
+#Since coefficient from my own optimization and R glm package are very similar,
+#I will use the result from R glm and lm package from this point on because they come with a nice reporting package
 
 #Export regression table in Latex format
 stargazer(Probit_optim, Logit_R_package, LP_R_package, title="Model comparison", align=TRUE)
 
 #keep only using data, function and results
-keep(OLS_data, Probit_data, Y_X1_Corr, OLS_coeff_table, OLS_SE_table, Probit_coeff_steep, probitLik, Probit_optim_coeff, negprobitLik, Logit_optim_coeff, neglogitLik, Probit_R_package, Logit_R_package, LP_R_package, Probit_coeff_compare, Logit_coeff_compare, sure = TRUE)
+keep(OLS_data, Probit_data, Y_X1_Corr, OLS_coeff_table, OLS_SE_table, Probit_coeff_steep, probitLik, Probit_optim_coeff, negprobitLik, Logit_optim_coeff, neglogitLik, LP_optim_coeff, LPLik, Probit_R_package, Logit_R_package, LP_R_package, Probit_coeff_compare, Logit_coeff_compare, LP_coeff_compare, sure = TRUE)
 
 
 
