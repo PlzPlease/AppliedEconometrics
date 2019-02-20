@@ -445,19 +445,18 @@ Logit_SD_delta <- SDcalc(Logit_var)
 #Bootstrap
 Probit_ME_boot <- numeric()
 Logit_ME_boot <- numeric()
-#initialize b 
-b <- c(0,0,0,0)
-##create for loop to random sampling data with replacement 30 times (To limit runtime)
-for (i in 1:30) {
-  ###generate new data frame by random sampling the main dataframe with replacement
-  boot_sample <- Probit_data[sample(nrow(Probit_data), replace = TRUE),]
-  ###Estimate new Probit model using boot_sample data
-  ### Note: to save time from optimization, I utilize R glm package which is faster
-  boot_Probit <- nlm(negprobitLik, b, dataframe = boot_sample)
-  boot_Logit <- nlm(neglogitLik, b, dataframe = boot_sample)
+#randomly generate beta from distribution with mean = beta from probit / logit model, and sd = beta SE from probit / logit model
+boot_Probit_coeff_all <- numeric()
+boot_Logit_coeff_all <- numeric()
+for (j in 1:4) {
+  boot_Probit_coeff_all <- rbind(boot_Probit_coeff_all, rnorm(1000,mean = Probit_optim_coeff[j], sd = Probit_optim_SE[j]))
+  boot_Logit_coeff_all <- rbind(boot_Logit_coeff_all, rnorm(1000,mean = Logit_optim_coeff[j], sd = Logit_optim_SE[j]))
+}
+##create for loop to calculate ME for each of the 1000 random beta
+for (i in 1:1000) {
   ###get coefficient
-  boot_Probit_coeff <- as.matrix(boot_Probit$estimate)
-  boot_Logit_coeff <- as.matrix(boot_Logit$estimate)
+  boot_Probit_coeff <- as.matrix(boot_Probit_coeff_all[,i])
+  boot_Logit_coeff <- as.matrix(boot_Logit_coeff_all[,i])
   ###get XB
   X_boot <- cbind(replicate(nrow(boot_sample),1),as.matrix(boot_sample[,2:ncol(boot_sample)]))
   XB_probit_boot <- X_boot %*% boot_Probit_coeff
