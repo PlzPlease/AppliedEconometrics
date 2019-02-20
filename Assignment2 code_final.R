@@ -417,7 +417,7 @@ Probit_pdf <- t(apply(XB, c(1,2), dnorm))
 J <-  (1/nrow(Probit_data)) * (Probit_pdf %*% X)
 ### 4) calculate var(model) by JVJ'
 Probit_var <- J %*% var_cov_Probit %*% t(J)
-### 5) Create a function to calculate SD of each regressor's ME through SE(b_i) = sqrt(model_var/var_xi)
+### 5) Create a function to calculate SD of each regressor's ME through SD(b_i) = sqrt(model_var/var_xi)
 SDcalc<- function(model_var) {
   x <- as.matrix(apply(X,c(2),var))
   for (i in 1:nrow(x)) {
@@ -425,7 +425,7 @@ SDcalc<- function(model_var) {
   }
   return(t(x))
 }
-### 6) use the function in 6) to find marginal effect's SD
+### 6) use the function in 5) to find marginal effect's SD
 Probit_SD_delta <- SDcalc(Probit_var)
 
 ## Logit delta method
