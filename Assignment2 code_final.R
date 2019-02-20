@@ -151,8 +151,6 @@ OLS_SE_table <- cbind(OLS_SE_formular, as.data.frame(OLS_SE_boot_49), as.data.fr
 rownames(OLS_SE_table) <- c("c", "X1", "X2", "X3")
 colnames(OLS_SE_table) <- c("Standard formular", "Bootstrap 49", "Bootstrap 499", "R OLS package")
 
-#keep only result and data table
-keep(ptm, OLS_data, Probit_data, Y_X1_Corr_formular, Y_X1_Corr_R_package, OLS_coeff_table, OLS_SE_table, sure = TRUE)
 
 
 
@@ -242,10 +240,6 @@ row.names(Probit_coeff_steep) <- c("intercept","X1","X2","X3")
 colnames(Probit_coeff_steep) <- c("Steepest ascent", "Expected Coefficient")
 
 
-#keep only using data, function and results
-keep(ptm, OLS_data, Probit_data, Y_X1_Corr_formular, Y_X1_Corr_R_package, OLS_coeff_table, OLS_SE_table, Probit_coeff_steep, probitLik  , sure = TRUE)
-
-
 
 # Exercise 4 Discrete Choice ----------------------------------------------
 #Probit
@@ -270,9 +264,15 @@ negprobitLik <- function(b, dataframe=Probit_data) {
 #initialize search vector
 b<-c(0,0,0,0)
 # Optimize min(-likelihood) = max likelihood
-Probit_optim <- nlm(negprobitLik,b)
+Probit_optim <- nlm(negprobitLik,b,hessian = TRUE)
 # get coefficient
 Probit_optim_coeff <- Probit_optim$estimate
+# get Hessian matrix
+Probit_optim_Hessian <- Probit_optim$hessian
+# get variance covariance matrix = inverse of hessian matrix
+var_cov_Probit <- Inverse(Probit_optim_Hessian)
+# get SE = square root of diagnoal of var-cov matrix
+Probit_optim_SE <- sqrt(diag(var_cov_Probit))
 
 
 #Logit
@@ -297,14 +297,20 @@ neglogitLik <- function(b, dataframe=Probit_data) {
 #initialize search vector
 b<-c(0,0,0,0)
 # Optimize min(-likelihood) = max likelihood
-Logit_optim <- nlm(neglogitLik,b)
+Logit_optim <- nlm(neglogitLik,b, hessian = TRUE)
 # get coefficient
 Logit_optim_coeff <- Logit_optim$estimate
+# get Hessian matrix
+Logit_optim_Hessian <- Logit_optim$hessian
+# get variance covariance matrix = inverse of hessian matrix
+var_cov_Logit <- Inverse(Logit_optim_Hessian)
+# get SE = square root of diagnoal of var-cov matrix
+Logit_optim_SE <- sqrt(diag(var_cov_Logit))
 
 
 #Linear probability model
 ## a function that return loss (sum square error) for OLS
-LPLik <- function(b, dataframe=Probit_data) {
+LPLoss <- function(b, dataframe=Probit_data) {
   #create XB matrix
   X <- cbind(replicate(nrow(dataframe),1),as.matrix(dataframe[,2:ncol(dataframe)]))
   XB <- X %*% b
@@ -320,35 +326,41 @@ LPLik <- function(b, dataframe=Probit_data) {
 #initialize search vector
 b<-c(0,0,0,0)
 # Optimize min(-likelihood) = max likelihood
-LP_optim <- nlm(LPLik,b)
+LP_optim <- nlm(LPLoss,b,hessian = TRUE)
 # get coefficient
 LP_optim_coeff <- LP_optim$estimate
+# get SE
+## 1) generate predicted Y
+X <- as.matrix(cbind(replicate(1, n=nrow(Probit_data)), Probit_data[,2:ncol(Probit_data)]))
+LP_optim_yhat <- X %*% LP_optim_coeff
+LP_optim_yhat[LP_optim_yhat>=0.5] <- 1
+LP_optim_yhat[LP_optim_yhat<0.5] <- 0
+## 2) calculate error
+LP_error <- Probit_data$ydum - LP_optim_yhat
+## 3) calculate Variance-Covariance matrix
+var_cov_LP <- as.numeric(var(LP_error)) * Inverse(crossprod(X))
+## 4) calculate SE
+LP_optim_SE <- sqrt(diag(var_cov_LP))
 
 
 # Compare the optimization result with R glm package result
 #Probit
 Probit_R_package <- glm(ydum ~ .,data = Probit_data, family = binomial(link="probit"))
 #compare
-Probit_coeff_compare <- rbind(Probit_optim_coeff,Probit_R_package$coefficients)
-row.names(Probit_coeff_compare) <- c("Probit from optimization", "Probit from glm package")
+Probit_compare <- rbind(Probit_optim_coeff,Probit_optim_SE,Probit_R_package$coefficients,summary(Probit_R_package)$coefficients[, 2])
+row.names(Probit_compare) <- c("Probit from optimization:Coefficient","Probit from optimization:SE", "Probit from glm package","Probit from glm SE")
 
 #Logit
 Logit_R_package <- glm(ydum ~ .,data = Probit_data, family = binomial(link="logit"))
 #compare
-Logit_coeff_compare <- rbind(Logit_optim_coeff,Logit_R_package$coefficients)
-row.names(Logit_coeff_compare) <- c("Logit from optimization", "Logit from glm package")
+Logit_compare <- rbind(Logit_optim_coeff,Logit_optim_SE,Logit_R_package$coefficients,summary(Logit_R_package)$coefficients[, 2])
+row.names(Logit_compare) <- c("Logit from optimization:Coefficient","Logit from optimization:SE", "Logit from glm package","Logit from glm SE")
 
 #Linear probability
 LP_R_package <- lm(ydum ~ ., Probit_data)
 #compare
-LP_coeff_compare <- rbind(LP_optim_coeff,LP_R_package$coefficients)
-row.names(LP_coeff_compare) <- c("Linear probability from optimization", "Linear probability from lm package")
-
-#Export regression table in Latex format to see significant
-stargazer(Probit_R_package, Logit_R_package, LP_R_package, title="Model comparison", align=TRUE)
-
-#keep only using data, function and results
-keep(ptm, OLS_data, Probit_data, Y_X1_Corr_formular, OLS_coeff_table, OLS_SE_table, Probit_coeff_steep, probitLik, Probit_optim_coeff, negprobitLik, Logit_optim_coeff, neglogitLik, LP_optim_coeff, LPLik, Probit_optim_coeff, Logit_optim_coeff, Probit_R_package, Logit_R_package,LP_R_package, LP_optim_coeff, Probit_coeff_compare, Logit_coeff_compare, LP_coeff_compare, sure = TRUE)
+LP_compare <- rbind(LP_optim_coeff,LP_optim_SE,LP_R_package$coefficients,summary(LP_R_package)$coefficients[, 2])
+row.names(LP_compare) <- c("LP from optimization:Coefficient","LP from optimization:SE", "LP from glm package","LP from glm SE")
 
 
 
@@ -403,20 +415,18 @@ XB <- X %*% Probit_optim_coeff
 Probit_pdf <- t(apply(XB, c(1,2), dnorm))
 ### 3) calculate jacobian matrix
 J <-  (1/nrow(Probit_data)) * (Probit_pdf %*% X)
-### 4) calculate coefficient var-cov matrix
-var_cov <- vcov(Probit_R_package)
-### 5) calculate var(model) by JVJ'
-Probit_var <- J %*% var_cov %*% t(J)
-### 6) Create a function to calculate SE of each regressor's ME through SE(b_i) = sqrt(model_var/var_xi)
-SEcalc<- function(model_var) {
+### 4) calculate var(model) by JVJ'
+Probit_var <- J %*% var_cov_Probit %*% t(J)
+### 5) Create a function to calculate SD of each regressor's ME through SE(b_i) = sqrt(model_var/var_xi)
+SDcalc<- function(model_var) {
   x <- as.matrix(apply(X,c(2),var))
   for (i in 1:nrow(x)) {
     x[i,1] <- sqrt(model_var/x[i,1])
   }
   return(t(x))
 }
-### 7) use the function in 6) to find marginal effect's SE
-Probit_SE_delta <- SEcalc(Probit_var)
+### 6) use the function in 6) to find marginal effect's SD
+Probit_SD_delta <- SDcalc(Probit_var)
 
 ## Logit delta method
 ### 1) create X matrix
@@ -427,9 +437,9 @@ Logit_pdf <- t(apply(XB, c(1,2), dlogis))
 ### 2) calculate jacobian matrix
 J <-  (1/nrow(Probit_data)) * (Logit_pdf %*% X)
 ### 3) calculate var(model) by JVJ'
-Logit_var <- J %*% var_cov %*% t(J)
-### 4) calculate SE using the function made above
-Logit_SE_delta <- SEcalc(Logit_var)
+Logit_var <- J %*% var_cov_Logit %*% t(J)
+### 4) calculate SD using the function made above
+Logit_SD_delta <- SDcalc(Logit_var)
 
 
 #Bootstrap
@@ -462,18 +472,14 @@ for (i in 1:30) {
   Probit_ME_boot <- rbind(Probit_ME_boot, t(boot_Probit_ME))
   Logit_ME_boot <- rbind(Probit_ME_boot, t(boot_Probit_ME))
 }
-###calculate SE by finding SD for each column
-Probit_SE_boot<- apply(Probit_ME_boot, 2, sd)
-Logit_SE_boot<- apply(Logit_ME_boot, 2, sd)
+###calculate SD by finding SD for each column
+Probit_SD_boot<- apply(Probit_ME_boot, 2, sd)
+Logit_SD_boot<- apply(Logit_ME_boot, 2, sd)
 
 #Table for SD report
-SD_report <- cbind(t(Probit_SE_delta), Probit_SE_boot, t(Logit_SE_delta), Logit_SE_boot)
+SD_report <- cbind(t(Probit_SD_delta), Probit_SD_boot, t(Logit_SD_delta), Logit_SD_boot)
 SD_report <- SD_report[2:nrow(SD_report),]
 colnames(SD_report) <- c("Probit SD Delta", "Probit SD Bootstrap", "Logit SD Delta", "Logit SD Bootstrap")
-
-#keep only using data, function and results
-keep(ptm, OLS_data, Probit_data, Y_X1_Corr_formular, OLS_coeff_table, OLS_SE_table, Probit_coeff_steep, probitLik, Probit_optim_coeff, negprobitLik, Logit_optim_coeff, neglogitLik, LP_optim_coeff, LPLik, Probit_optim_coeff, Logit_optim_coeff, Probit_R_package, Logit_R_package,LP_R_package, LP_optim_coeff, Probit_coeff_compare, Logit_coeff_compare, LP_coeff_compare, ME_report, SD_report, Probit_SE_boot,Logit_SE_boot, Probit_SE_delta, Probit_var, Logit_var, Logit_SE_delta, sure = TRUE)
-
 
 
 # List of objects which are the answer ------------------------------------
@@ -487,7 +493,7 @@ keep(ptm, OLS_data, Probit_data, Y_X1_Corr_formular, OLS_coeff_table, OLS_SE_tab
 ## Exercise 3 function that return probit likelihood: probitLik
 ## Exercise 3 steepest ascent result: Probit_coeff_steep
 
-## Exercise 4 probit, logit, linear probability model: Probit_coeff_compare, Logit_coeff_compare, LP_coeff_compare
+## Exercise 4 probit, logit, linear probability model: Probit_compare, Logit_compare, LP_compare
 
 ## Exercise 5 Marginal effect: ME_report
 ## Exercise 5 SD: SD_report
