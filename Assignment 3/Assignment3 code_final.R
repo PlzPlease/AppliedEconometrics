@@ -370,7 +370,7 @@ colnames(ex5r_table) <- c("Choice2","Choice3","Choice4","Choice5","Choice6","Cho
 
 # calculate MCFadden, Train, and Tye Test (MTT test)
 MTT_value <- -2*(Likelihood_f-Likelihood_r)
-MTT_pval <- pchisq(MTT_value, df=56, lower.tail = FALSE)
+MTT_pval <- pchisq(MTT_value, df=57, lower.tail = FALSE)
 MTT_table <- data.frame(c(Likelihood_f,Likelihood_r,MTT_value,MTT_pval))
 row.names(MTT_table) <- c("LL_full model", "LL_restricted model", "Test statistic", "p-val")
 colnames(MTT_table) <- "MTT Test"
