@@ -130,41 +130,70 @@ rownames(FE_table) <- c("Between Estimates", "Within Estimates", "First Time Dif
 
 
 # Exercise 4 Understanding Fixed Effects ----------------------------------
-# Create data of those 100 randomly selected
-ex4DF <- Koop_Tobias[Koop_Tobias$PERSONID %in% sample(unique(Koop_Tobias$PERSONID),100),]
-## create dummy variables for PERSONID
-id_f <- factor(ex4DF$PERSONID)
-id_dummy <- model.matrix(~id_f)
-ex4_FE_DF <- cbind(ex4DF[,c("LOGWAGE", "EDUC", "POTEXPER")], id_dummy)
-## Prepare X and Y matrix
-X <- as.matrix(ex4_FE_DF[,2:ncol(ex4_FE_DF)])
-Y <- as.matrix(ex4_FE_DF[,1])
+
+# Create a function that extract individual fixed effect from 100 randomly selected sample
+getFixEffect <- function(bootstrap = FALSE){
+  # Create data of those 100 randomly selected
+  ex4DF <<- Koop_Tobias[Koop_Tobias$PERSONID %in% sample(unique(Koop_Tobias$PERSONID),100, replace = bootstrap),]
   
-# Function that return loss = sum square error
-loss_function <- function(B) {
-  Y_hat <- X %*% B
-  loss <- sum((Y-Y_hat)^2)
+  ## create dummy variables for PERSONID
+  id_f <- factor(ex4DF$PERSONID)
+  id_dummy <- model.matrix(~id_f)
+  ex4_FE_DF <- cbind(ex4DF[,c("LOGWAGE", "EDUC", "POTEXPER")], id_dummy)
+  ## Prepare X and Y matrix
+  X <- as.matrix(ex4_FE_DF[,2:ncol(ex4_FE_DF)])
+  Y <- as.matrix(ex4_FE_DF[,1])
+  
+  # initialize B
+  B_ini <- matrix(0,nrow = ncol(id_dummy)+2, ncol = 1)
+  
+  # Function that return loss = sum square error
+  loss_function <- function(B) {
+    Y_hat <- X %*% B
+    loss <- sum((Y-Y_hat)^2)
+    return(loss)
+  }
+  
+  # Minimize loss
+  ex4_FE_model <- nlm(loss_function,B_ini)
+  
+  # Generate Coefficient table
+  ex4_FE_coeff <- as.matrix(ex4_FE_model$estimate)
+  row.names(ex4_FE_coeff) <- colnames(ex4_FE_DF[,2:ncol(ex4_FE_DF)])
+  
+  # Retrieve alpha_i
+  ex4_alpha <- id_dummy %*% as.matrix(ex4_FE_coeff[3:nrow(ex4_FE_coeff)])
+  return(ex4_alpha)
 }
 
-# initialize B
-B_ini <- matrix(0,nrow = 102, ncol = 1)
+# Get alpha vector
+ex41_alpha <- getFixEffect()
 
-# Minimize loss
-ex4_FE_model <- nlm(loss_function,B_ini)
+# A function that regress alpha with time invariants variable
+regFixEffect <- function(alpha_vector = getFixEffect(bootstrap = TRUE)){
+  # Create new dataset with alpha and time invariants variable (+ remove duplicates)
+  ex4_alpha_DF <- cbind(alpha_vector, ex4DF[,6:10]) %>% distinct()
+  # regress alpha on invariant variables
+  ex4_alpha_model <- lm(alpha_vector ~ ., data = ex4_alpha_DF)
+  return(ex4_alpha_model)
+}
 
-# Generate Coefficient table
-ex4_FE_coeff <- as.matrix(ex4_FE_model$estimate)
-row.names(ex4_FE_coeff) <- colnames(ex4_FE_DF[,2:ncol(ex4_FE_DF)])
-
-# Retrieve alpha_i
-ex4_alpha <- id_dummy %*% as.matrix(ex4_FE_coeff[3:nrow(ex4_FE_coeff)])
-
-# Create new dataset with alpha and time invariants variable (+ remove duplicates)
-ex4_alpha_DF <- cbind(ex4_alpha, ex4DF[,6:10]) %>% distinct()
-# regress alpha on invariant variables
-ex4_alpha_model <- lm(ex4_alpha ~ ., data = ex4_alpha_DF)
 # summarise to see how much these time invariant variables can explain alpha
-summary(ex4_alpha_model)
+ex42_alpha_model <- regFixEffect(ex41_alpha)
+summary(ex42_alpha_model)
+
+# Now implement bootstraping to find gamma standard error
+gamma_holder <- numeric()
+## parameter = number of replication
+replication <- 50
+for (rep in 1:replication) {
+  model <- regFixEffect()
+  gamma_holder <- rbind(gamma_holder,model$coefficients)
+}
+## get SD of gamma
+gamma_sd = as.data.frame(apply(gamma_holder, MARGIN = 2, FUN = sd))
+colnames(gamma_sd) <- "SE from Bootstrapping"
+
 
 
 # List of objects which are the answer ------------------------------------
@@ -172,5 +201,5 @@ summary(ex4_alpha_model)
 ## Exercise 1 represent
 ## Exercise 2 RE_table
 ## Exercise 3 FE_table
-## Exercise 4 summary(ex4_alpha_model)
+## Exercise 4 exercise 4.1 = ex41_alpha, exercise 4.2 = summary(ex42_alpha_model), exercise 4.3 = gamma_sd
   
