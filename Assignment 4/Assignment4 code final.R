@@ -185,7 +185,7 @@ summary(ex42_alpha_model)
 # Now implement bootstraping to find gamma standard error
 gamma_holder <- numeric()
 ## parameter = number of replication
-replication <- 50
+replication <- 100
 for (rep in 1:replication) {
   model <- regFixEffect()
   gamma_holder <- rbind(gamma_holder,model$coefficients)
